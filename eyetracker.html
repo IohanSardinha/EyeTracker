@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Georgia, serif; background: #0f1117; color: #e8e8e8; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+h1 { font-size: 1.4rem; font-weight: 400; letter-spacing: 0.15em; color: #8ab4f8; margin-bottom: 8px; text-transform: uppercase; }
+.subtitle { font-size: 0.8rem; color: #666; margin-bottom: 32px; }
+.nav { display: flex; gap: 8px; margin-bottom: 32px; }
+.nav button { padding: 8px 20px; border: 1px solid #333; background: transparent; color: #aaa; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+.nav button.active, .nav button:hover { background: #8ab4f8; color: #0f1117; border-color: #8ab4f8; }
+#test-panel { width: 100%; max-width: 700px; }
+.level-indicator { text-align: center; font-size: 0.75rem; color: #555; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+.progress-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #222; border: 1px solid #444; }
+.dot.done { background: #8ab4f8; border-color: #8ab4f8; }
+.dot.current { background: transparent; border-color: #8ab4f8; box-shadow: 0 0 6px #8ab4f8; }
+.letter-display { text-align: center; background: #fff; border-radius: 12px; padding: 40px 20px; margin-bottom: 28px; min-height: 140px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.2em; color: #111; font-family: 'Courier New', monospace; font-weight: 700; user-select: none; }
+.input-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+.letter-input { width: 52px; height: 52px; text-align: center; font-size: 1.4rem; font-weight: 700; border: 2px solid #333; border-radius: 8px; background: #1a1d24; color: #8ab4f8; outline: none; font-family: 'Courier New', monospace; }
+.letter-input:focus { border-color: #8ab4f8; }
+.letter-input.correct { border-color: #4caf50; background: #1a2e1a; color: #4caf50; }
+.letter-input.wrong { border-color: #f44336; background: #2e1a1a; color: #f44336; }
+.keyboard { display: flex; flex-direction: column; gap: 8px; align-items: center; margin-bottom: 24px; }
+.kb-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.kb-key { width: 48px; height: 48px; background: #1e2130; border: 1px solid #333; border-radius: 8px; color: #ccc; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.kb-key:hover { background: #8ab4f8; color: #0f1117; border-color: #8ab4f8; transform: translateY(-1px); }
+.kb-special { background: #2a2030; border-color: #555; font-size: 0.7rem; min-width: 64px; width: auto; padding: 0 10px; color: #aaa; }
+.btn-submit { display: block; margin: 0 auto; padding: 14px 48px; background: #8ab4f8; color: #0f1117; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.btn-submit:hover { background: #aecbfa; transform: translateY(-1px); }
+.result-banner { text-align: center; padding: 16px; border-radius: 10px; margin-bottom: 20px; font-size: 1rem; }
+.good { background: #1a2e1a; border: 1px solid #4caf50; color: #4caf50; }
+.mid  { background: #2e2a10; border: 1px solid #ffb74d; color: #ffb74d; }
+.bad  { background: #2e1a1a; border: 1px solid #f44336; color: #f44336; }
+#history-panel { width: 100%; max-width: 700px; display: none; }
+.history-title { font-size: 1rem; color: #8ab4f8; margin-bottom: 16px; }
+.no-history { color: #555; font-size: 0.9rem; text-align: center; padding: 40px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #333; color: #8ab4f8; font-weight: 400; text-transform: uppercase; font-size: 0.75rem; }
+td { padding: 12px; border-bottom: 1px solid #1e2130; vertical-align: top; }
+tr:hover td { background: #1a1d24; }
+.score-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; }
+.score-high { background: #1a3a1a; color: #4caf50; }
+.score-mid  { background: #2e2a10; color: #ffb74d; }
+.score-low  { background: #2e1a1a; color: #f44336; }
+.detail-row { font-size: 0.7rem; color: #555; margin-top: 4px; line-height: 1.6; }
+.clear-btn { margin-top: 20px; padding: 8px 20px; background: transparent; border: 1px solid #f44336; color: #f44336; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+.clear-btn:hover { background: #f44336; color: #fff; }
+.completed-msg { text-align: center; padding: 32px; }
+.big-score { font-size: 3rem; font-weight: 700; color: #8ab4f8; margin: 16px 0 8px; }
+.btn-restart { padding: 12px 36px; background: transparent; border: 1px solid #8ab4f8; color: #8ab4f8; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin: 4px; }
+.btn-restart:hover { background: #8ab4f8; color: #0f1117; }
+</style>
+</head>
+<body>
+<h1>👁 Vision Tracker</h1>
+<p class="subtitle">Daily eye test — track your recovery</p>
+<div class="nav">
+  <button class="active" onclick="showPanel('test')">Test</button>
+  <button onclick="showPanel('history')">History</button>
+</div>
+<div id="test-panel">
+  <div class="level-indicator" id="level-label"></div>
+  <div class="progress-dots" id="progress-dots"></div>
+  <div class="letter-display" id="letter-display">—</div>
+  <div class="input-row" id="input-row"></div>
+  <div class="keyboard" id="keyboard"></div>
+  <div id="result-area"></div>
+  <button class="btn-submit" id="submit-btn" onclick="submitAnswer()">Check</button>
+</div>
+<div id="history-panel">
+  <div class="history-title">📋 Test History</div>
+  <div id="history-content"></div>
+</div>
+<script>
+const LEVELS=[{size:'5rem',label:'Very Large'},{size:'3.5rem',label:'Large'},{size:'2.2rem',label:'Medium'},{size:'1.4rem',label:'Small'},{size:'0.9rem',label:'Very Small'}];
+const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const KB_ROWS=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+let lvl=0,curLetters=[],activeInp=0,sessAnswers=[];
+function rand5(){return Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*26)]);}
+function initTest(){lvl=0;sessAnswers=[];loadLevel();}
+function loadLevel(){
+  curLetters=rand5();activeInp=0;
+  document.getElementById('level-label').textContent='Level '+(lvl+1)+' of '+LEVELS.length+' — '+LEVELS[lvl].label;
+  renderDots();renderDisplay();renderInputs();renderKeyboard();
+  document.getElementById('result-area').innerHTML='';
+  const sb=document.getElementById('submit-btn');if(sb){sb.style.display='block';sb.disabled=false;}
+}
+function renderDots(){
+  const c=document.getElementById('progress-dots');c.innerHTML='';
+  LEVELS.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i<lvl?' done':i===lvl?' current':'');c.appendChild(d);});
+}
+function renderDisplay(){
+  const d=document.getElementById('letter-display');d.style.fontSize=LEVELS[lvl].size;d.textContent=curLetters.join('  ');
+}
+function renderInputs(){
+  const row=document.getElementById('input-row');row.innerHTML='';
+  for(let i=0;i<5;i++){
+    const inp=document.createElement('input');inp.type='text';inp.maxLength=1;inp.className='letter-input';inp.id='inp-'+i;
+    inp.addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,'');if(e.target.value)focusInp(i+1);});
+    inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!e.target.value)focusInp(i-1);});
+    inp.addEventListener('focus',()=>activeInp=i);
+    row.appendChild(inp);
+  }
+  focusInp(0);
+}
+function focusInp(i){if(i>=0&&i<5){activeInp=i;document.getElementById('inp-'+i)?.focus();}}
+function renderKeyboard(){
+  const kb=document.getElementById('keyboard');kb.innerHTML='';
+  KB_ROWS.forEach(row=>{
+    const div=document.createElement('div');div.className='kb-row';
+    row.split('').forEach(l=>{const b=document.createElement('button');b.className='kb-key';b.textContent=l;b.onclick=()=>typeKey(l);div.appendChild(b);});
+    if(row==='ZXCVBNM'){const b=document.createElement('button');b.className='kb-key kb-special';b.textContent='⌫ Back';b.onclick=bksp;div.appendChild(b);}
+    kb.appendChild(div);
+  });
+}
+function typeKey(l){const inp=document.getElementById('inp-'+activeInp);if(!inp||inp.readOnly)return;inp.value=l;if(activeInp<4)focusInp(activeInp+1);}
+function bksp(){const inp=document.getElementById('inp-'+activeInp);if(inp&&inp.value){inp.value='';}else{focusInp(activeInp-1);const p=document.getElementById('inp-'+activeInp);if(p)p.value='';}}
+function getAnswers(){return Array.from({length:5},(_,i)=>(document.getElementById('inp-'+i)?.value||'').toUpperCase());}
+function submitAnswer(){
+  const ans=getAnswers();let miss=false;
+  ans.forEach((a,i)=>{if(!a){document.getElementById('inp-'+i).style.borderColor='#ff9800';miss=true;}});
+  if(miss)return;
+  const correct=ans.map((a,i)=>a===curLetters[i]);const num=correct.filter(Boolean).length;
+  for(let i=0;i<5;i++){const inp=document.getElementById('inp-'+i);inp.className='letter-input '+(correct[i]?'correct':'wrong');inp.readOnly=true;}
+  sessAnswers.push({letters:[...curLetters],answers:[...ans],correct:[...correct],level:lvl});
+  const ra=document.getElementById('result-area');const cls=num>=4?'good':num>=2?'mid':'bad';
+  ra.innerHTML='<div class="result-banner '+cls+'">'+num+'/5 correct at '+LEVELS[lvl].label+'<br><small style="opacity:0.7">Expected: '+curLetters.join(' ')+' | You wrote: '+ans.join(' ')+'</small></div>';
+  document.getElementById('submit-btn').style.display='none';
+  if(lvl<LEVELS.length-1){const next=document.createElement('button');next.className='btn-submit';next.style.marginTop='12px';next.textContent='Next Level →';next.onclick=()=>{lvl++;loadLevel();};ra.appendChild(next);}
+  else{finishTest();}
+}
+function finishTest(){
+  const total=sessAnswers.reduce((s,l)=>s+l.correct.filter(Boolean).length,0);
+  const ttl=sessAnswers.length*5;const pct=Math.round(total/ttl*100);
+  const bd=sessAnswers.map((l,i)=>LEVELS[i].label+': '+l.correct.filter(Boolean).length+'/5').join('  ');
+  const rec={date:new Date().toISOString(),totalCorrect:total,totalLetters:ttl,pct,levels:sessAnswers.map(l=>({level:l.level,letters:l.letters,answers:l.answers,correct:l.correct}))};
+  const h=JSON.parse(localStorage.getItem('visionHistory')||'[]');h.unshift(rec);localStorage.setItem('visionHistory',JSON.stringify(h));
+  document.getElementById('test-panel').innerHTML='<div class="completed-msg"><div style="font-size:1rem;color:#8ab4f8;letter-spacing:0.1em;text-transform:uppercase">Test Complete</div><div class="big-score">'+pct+'%</div><p>'+total+'/'+ttl+' letters correct<br><span style="font-size:0.75rem;color:#444">'+bd+'</span></p><button class="btn-restart" onclick="restartTest()">Take Test Again</button><button class="btn-restart" onclick="showPanel(\'history\')">View History</button></div>';
+}
+function restartTest(){
+  document.getElementById('test-panel').innerHTML='<div class="level-indicator" id="level-label"></div><div class="progress-dots" id="progress-dots"></div><div class="letter-display" id="letter-display">—</div><div class="input-row" id="input-row"></div><div class="keyboard" id="keyboard"></div><div id="result-area"></div><button class="btn-submit" id="submit-btn" onclick="submitAnswer()">Check</button>';
+  initTest();
+}
+function renderHistory(){
+  const h=JSON.parse(localStorage.getItem('visionHistory')||'[]');const c=document.getElementById('history-content');
+  if(!h.length){c.innerHTML='<div class="no-history">No tests yet. Complete a test to see history here.</div>';return;}
+  let html='<table><thead><tr><th>Date & Time</th><th>Score</th><th>Level Breakdown</th></tr></thead><tbody>';
+  h.forEach(r=>{
+    const d=new Date(r.date);const ds=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});const ts=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    const cls=r.pct>=80?'score-high':r.pct>=50?'score-mid':'score-low';
+    const bd=r.levels.map((l,i)=>LEVELS[i].label+': '+l.correct.filter(Boolean).length+'/5').join(' · ');
+    html+='<tr><td>'+ds+'<br><span style="color:#555;font-size:0.75rem">'+ts+'</span></td><td><span class="score-pill '+cls+'">'+r.pct+'%</span><br><span style="color:#555;font-size:0.75rem">'+r.totalCorrect+'/'+r.totalLetters+'</span></td><td><div class="detail-row">'+bd+'</div></td></tr>';
+  });
+  html+='</tbody></table><button class="clear-btn" onclick="clearHistory()">Clear History</button>';c.innerHTML=html;
+}
+function clearHistory(){if(confirm('Clear all test history?')){localStorage.removeItem('visionHistory');renderHistory();}}
+function showPanel(p){
+  document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',(p==='test'&&i===0)||(p==='history'&&i===1)));
+  document.getElementById('test-panel').style.display=p==='test'?'block':'none';
+  document.getElementById('history-panel').style.display=p==='history'?'block':'none';
+  if(p==='history')renderHistory();
+}
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('test-panel').style.display==='none')return;
+  if(e.key==='Enter'){const sb=document.getElementById('submit-btn');if(sb&&sb.style.display!=='none')submitAnswer();}
+});
+initTest();
+</script>
+</body>
+</html>
